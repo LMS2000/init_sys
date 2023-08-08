@@ -23,3 +23,18 @@
 ## 业务功能
 
 - 用户登录、注册、注销、更新、检索、权限管理
+
+- ## 用说明
+
+部署：项目中使用了自己做的一个工具库starter，已经放在项目的mystarter文件夹下，项目涉及到的sql在sql文件夹下
+如果你要启动项目的话需要使用
+
+```
+mvn install:install-file -Dfile=lms-utils-1.0-SNAPSHOT.jar -Dmaven.repo.local=D:\apache-maven-3.6.1\maven_repository -DgroupId=com.lms -DartifactId=lms-utils -Dversion=1.0-SNAPSHOT -Dpackaging=jar
+
+```
+
+在jar包所在路径下使用这条命令
+其中-Dmaven.repo.local指定你的maven本地仓库路径，
+
+另外前端修改需要在.env.development修改你的后端地址
