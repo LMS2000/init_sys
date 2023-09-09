@@ -25,7 +25,7 @@ public class ChangeUserEnableDto implements Serializable {
 
     @Positive(message = "id不合法")
     @ApiModelProperty(value = "用户id")
-    private Integer uid;
+    private Long uid;
     @RangeCheck(range = {0,1})
     @ApiModelProperty(value = "用户启用状态")
     private Integer enable;

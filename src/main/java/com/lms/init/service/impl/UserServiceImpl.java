@@ -71,7 +71,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
 
 
     @Override
-    public Integer addUser(AddUserDto addUserDto) {
+    public Long addUser(AddUserDto addUserDto) {
 
         String username = addUserDto.getUsername();
         //校验重复的用户名
@@ -154,7 +154,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         if (currentUser == null || currentUser.getUid() == null) {
             throw new BusinessException(HttpCode.NOT_LOGIN_ERROR, "未登录");
         }
-        Integer id = currentUser.getUid();
+        Long id = currentUser.getUid();
 //        User byId = this.getById(id);  根据用户id查找用户
         User byId = userMapper.selectById(id);
         if (byId == null) {
@@ -216,13 +216,13 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
 
 
     @Override
-    public Boolean enableUser(Integer id) {
+    public Boolean enableUser(Long id) {
         BusinessException.throwIf(id==1);
         return updateById(User.builder().uid(id).enable(ENABLE).build());
     }
 
     @Override
-    public Boolean disableUser(Integer id) {
+    public Boolean disableUser(Long id) {
         BusinessException.throwIf(id==1);
         return updateById(User.builder().uid(id).enable(UserConstants.DISABLE).build());
     }
@@ -236,7 +236,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
      * @param uids
      */
     @Override
-    public Boolean deleteUser(List<Integer> uids) {
+    public Boolean deleteUser(List<Long> uids) {
         //不可以删除超级管理员
         BusinessException.throwIf(uids.contains(1));
         //集合包括不存在的用户
@@ -247,7 +247,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
     }
 
     @Override
-    public Boolean resetPassword(ResetPasswordDto resetPasswordDto, Integer uid) {
+    public Boolean resetPassword(ResetPasswordDto resetPasswordDto, Long uid) {
         String oldPassword = resetPasswordDto.getOldPassword();
         String newPassword = resetPasswordDto.getNewPassword();
 
@@ -266,7 +266,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
     }
 
     @Override
-    public String uploadAvatar(MultipartFile file, Integer uid) {
+    public String uploadAvatar(MultipartFile file, Long uid) {
         //校验文件
         validFile(file);
 
@@ -343,7 +343,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
     @Override
     public Boolean updateCurrentUser(UpdateCurrentUserDto userDto, HttpServletRequest request) {
 
-        Integer uid = this.getLoginUser(request).getUid();
+        Long uid = this.getLoginUser(request).getUid();
         return this.updateById(User.builder().uid(uid)
                 .nickname(userDto.getNickname()).email(userDto.getEmail()).build());
     }

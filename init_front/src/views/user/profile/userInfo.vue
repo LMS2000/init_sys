@@ -1,10 +1,10 @@
 <template>
   <el-form ref="form" :model="user" :rules="rules" label-width="80px">
-    <el-form-item label="邮箱" prop="email">
-      <el-input v-model="user.email" maxlength="50" />
+    <el-form-item label="昵称" prop="nickName">
+       <el-input v-model="nickName" maxlength="50" />
     </el-form-item>
-    <el-form-item label="昵称" prop="nickname">
-      <el-input v-model="user.nickname" maxlength="50" />
+    <el-form-item label="邮箱" prop="email">
+      <el-input v-model="email" maxlength="50" />
     </el-form-item>
     <el-form-item>
       <el-button type="primary" size="mini" @click="submit">保存</el-button>
@@ -24,9 +24,11 @@ export default {
   },
   data() {
     return {
+      email:'',
+      nickName:'',
       // 表单校验
       rules: {
-        nickname: [
+        nickName: [
           { required: true, message: "用户昵称不能为空", trigger: "blur" }
         ],
         email: [
@@ -48,24 +50,17 @@ export default {
       }
     };
   },
+  created() {
+      this.email=this.user.email
+  },
   methods: {
     submit() {
       this.$refs["form"].validate(valid => {
         if (valid) {
+          this.user.email=this.email
+          this.user.nickname=this.nickName
           updateCurrentUser(this.user).then(response => {
-            if(response.code==20000){
-               this.$modal.msgSuccess("修改成功");
-               const user = JSON.parse(localStorage.getItem('userInfo'))
-               user.email=this.uesr.email
-               user.nickname=this.user.nickname
-               window.localStorage.setItem(
-                 "userInfo",
-                 JSON.stringify(user)
-               );
-            }else{
-              this.$modal.msgError("修改失败");
-            }
-
+            this.$modal.msgSuccess("修改成功");
           });
         }
       });

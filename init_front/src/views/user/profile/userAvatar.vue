@@ -56,7 +56,7 @@
 <script>
 import store from "@/store";
 import { VueCropper } from "vue-cropper";
-import { setAvatar, getInfo} from "../../../api/user.js";
+import { setAvatar, getCurrentUser} from "../../../api/user.js";
 import { debounce } from '@/utils'
 
 export default {
@@ -147,12 +147,14 @@ export default {
           this.$modal.msgSuccess("修改成功");
           this.visible = false;
         });
-        const user = JSON.parse(localStorage.getItem('userInfo'))
-        user.avatar=this.options.img
-        window.localStorage.setItem(
-          "userInfo",
-          JSON.stringify(user)
-        );
+        getCurrentUser().then(res=>{
+          const loginUser=res.data
+         window.localStorage.setItem(
+           "userInfo",
+           JSON.stringify(loginUser)
+         );
+        })
+        console.log(localStorage.getItem('userInfo'))
       });
     },
     // 实时预览

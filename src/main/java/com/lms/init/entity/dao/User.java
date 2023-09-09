@@ -18,7 +18,7 @@ import java.time.LocalDateTime;
 public class User {
 
     @TableId(value = "uid", type = IdType.AUTO)
-    private Integer uid;
+    private Long uid;
 
     private String username;
 
@@ -31,10 +31,10 @@ public class User {
 
     private String avatar;
 
-    @TableField("delete_flag")
+
     private Integer deleteFlag;
 
-    @TableField("user_role")
+
     private  String userRole;
 
 

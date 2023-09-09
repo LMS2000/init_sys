@@ -19,7 +19,7 @@ public class LoginUserVo implements Serializable {
     private static final long serialVersionUID = 1L;
 
 
-    private Integer uid;
+    private Long uid;
     private String username;
 
     private String nickname;

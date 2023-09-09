@@ -20,4 +20,6 @@ public class ResetPasswordDto implements Serializable {
 
     private String newPassword;
 
+    private String emailCode;
+
 }

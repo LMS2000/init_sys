@@ -68,17 +68,19 @@ public class UserController {
     }
 
 
+
+
     @PostMapping("/register")
     @ApiOperation("用户注册")
     public Boolean  userRegister(HttpSession session, @Validated @RequestBody RegisterUserDto registerUserDto){
 
         try{
-            String code = (String) session.getAttribute(UserConstants.CHECK_CODE_KEY_EMAIL);
+            String code = (String) session.getAttribute(UserConstants.EMAIIL_HEADER);
             BusinessException.throwIf(StringUtils.isEmpty(code)||!code.equals(registerUserDto.getEmailCode()),
                     HttpCode.PARAMS_ERROR,"邮箱验证码错误");
             return userService.registerUser(registerUserDto);
         }finally {
-              session.removeAttribute(UserConstants.CHECK_CODE_KEY_EMAIL);
+            session.removeAttribute(UserConstants.EMAIIL_HEADER);
         }
     }
 
@@ -117,7 +119,7 @@ public class UserController {
                 throw new BusinessException(HttpCode.PARAMS_ERROR,"图片验证码不正确");
             }
             String emailCode = userService.sendEmail(email, type);
-            session.setAttribute(UserConstants.EMAIIL_HEADER+type,emailCode);
+            session.setAttribute(UserConstants.EMAIIL_HEADER,emailCode);
             return true;
         } finally {
             session.removeAttribute(UserConstants.CHECK_CODE_KEY_EMAIL);
@@ -130,9 +132,9 @@ public class UserController {
      * @param request
      * @return
      */
-   @PostMapping("/logout")
-   @ApiOperation("用户登出")
-   public Boolean logout(HttpServletRequest request){
+    @PostMapping("/logout")
+    @ApiOperation("用户登出")
+    public Boolean logout(HttpServletRequest request){
         if (request == null) {
             throw new BusinessException(HttpCode.PARAMS_ERROR);
         }
@@ -143,7 +145,7 @@ public class UserController {
     @AuthCheck(mustRole = UserConstants.ADMIN_ROLE)
     public UserVo getUserById(@PathVariable("id") Integer uid){
         User byId = userService.getById(uid);
-       return USER_CONVERTER.toUserVo(byId);
+        return USER_CONVERTER.toUserVo(byId);
     }
 
 
@@ -171,7 +173,7 @@ public class UserController {
     @PostMapping("/add")
     @ApiOperation("添加用户")
     @AuthCheck(mustRole = UserConstants.ADMIN_ROLE)
-    public Integer add(@Validated @RequestBody(required = true) AddUserDto userDto) {
+    public Long add(@Validated @RequestBody(required = true) AddUserDto userDto) {
         return userService.addUser(userDto);
     }
 
@@ -183,7 +185,7 @@ public class UserController {
     @PostMapping("/delete")
     @ApiOperation("批量删除用户")
     @AuthCheck(mustRole = UserConstants.ADMIN_ROLE)
-    public Boolean removeUser( @RequestParam("userIds") List<Integer> userIds){
+    public Boolean removeUser( @RequestParam("userIds") List<Long> userIds){
         return userService.deleteUser(userIds);
     }
 
@@ -199,8 +201,18 @@ public class UserController {
     @PostMapping("/resetPassword")
     @ApiOperation("修改密码")
     public Boolean resetPassword(@RequestBody ResetPasswordDto resetPasswordDto, HttpServletRequest request) {
-        Integer uid = userService.getLoginUser(request).getUid();
-        return  userService.resetPassword(resetPasswordDto, uid);
+        HttpSession session = request.getSession();
+        try{
+            String code = (String) session.getAttribute(UserConstants.EMAIIL_HEADER);
+            BusinessException.throwIf(StringUtils.isEmpty(code)||!code.equals(resetPasswordDto.getEmailCode()),
+                    HttpCode.PARAMS_ERROR,"邮箱验证码错误");
+            Long uid = userService.getLoginUser(request).getUid();
+            return  userService.resetPassword(resetPasswordDto, uid);
+        }finally {
+            session.removeAttribute(UserConstants.EMAIIL_HEADER);
+        }
+
+
     }
 
     /**
@@ -212,7 +224,7 @@ public class UserController {
     @PostMapping("/uploadAvatar")
     @ApiOperation("上次头像")
     public String uploadAvatar(@RequestBody MultipartFile file,HttpServletRequest request) {
-        Integer uid = userService.getLoginUser(request).getUid();
+        Long uid = userService.getLoginUser(request).getUid();
         return userService.uploadAvatar(file, uid);
     }
 

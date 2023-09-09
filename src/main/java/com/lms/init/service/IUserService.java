@@ -25,7 +25,7 @@ public interface IUserService extends IService<User> {
      * @param addUserDto
      * @return 新用户 id
      */
-    Integer addUser(AddUserDto addUserDto);
+    Long addUser(AddUserDto addUserDto);
 
 
     Boolean registerUser(RegisterUserDto registerUserDto);
@@ -79,15 +79,15 @@ public interface IUserService extends IService<User> {
 
 
 
-    Boolean enableUser(Integer id);
-    Boolean disableUser(Integer id);
+    Boolean enableUser(Long id);
+    Boolean disableUser(Long id);
 
 
-    Boolean deleteUser(List<Integer> uids);
-    Boolean resetPassword(ResetPasswordDto resetPasswordDto, Integer uid);
+    Boolean deleteUser(List<Long> uids);
+    Boolean resetPassword(ResetPasswordDto resetPasswordDto, Long uid);
 //
 //
-    String uploadAvatar(MultipartFile file, Integer uid);
+    String uploadAvatar(MultipartFile file, Long uid);
 
     Boolean  updateCurrentUser(UpdateCurrentUserDto userDto,HttpServletRequest request);
     String sendEmail(String email ,Integer type);
