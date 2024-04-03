@@ -1,7 +1,7 @@
 package com.lms.init.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
-import com.lms.init.entity.dao.User;
+import com.lms.init.model.entity.User;
 import org.apache.ibatis.annotations.Mapper;
 
 @Mapper

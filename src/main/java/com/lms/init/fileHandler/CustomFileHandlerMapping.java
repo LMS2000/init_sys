@@ -4,7 +4,7 @@ package com.lms.init.fileHandler;
 
 
 
-import com.lms.init.constants.FileConstants;
+import com.lms.init.constants.FileConstant;
 import org.springframework.beans.BeansException;
 import org.springframework.context.ApplicationContextAware;
 import org.springframework.web.servlet.handler.AbstractUrlHandlerMapping;
@@ -22,7 +22,7 @@ public class CustomFileHandlerMapping extends AbstractUrlHandlerMapping implemen
     public CustomFileHandlerMapping(CustomFileResourceHttpRequestHandler fileResourceHttpRequestHandler) {
         this.fileResourceHttpRequestHandler = fileResourceHttpRequestHandler;
         //设置映射表所有的/static/**的请求都是由fileResourceHttpRequestHandler去处理
-        this.urlMap.put(FileConstants.STATIC_REQUEST_PREFIX_PATTERN, fileResourceHttpRequestHandler);
+        this.urlMap.put(FileConstant.STATIC_REQUEST_PREFIX_PATTERN, fileResourceHttpRequestHandler);
     }
 
     @Override

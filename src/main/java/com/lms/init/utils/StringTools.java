@@ -2,7 +2,7 @@ package com.lms.init.utils;
 
 
 
-import com.lms.init.constants.CommonConstants;
+import com.lms.init.constants.CommonConstant;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.lang3.RandomStringUtils;
 
@@ -44,7 +44,7 @@ public class StringTools {
     public static String rename(String fileName) {
         String fileNameReal = getFileNameNoSuffix(fileName);
         String suffix = getFileSuffix(fileName);
-        return fileNameReal + "_" + getRandomString(CommonConstants.LENGTH_5) + suffix;
+        return fileNameReal + "_" + getRandomString(CommonConstant.LENGTH_5) + suffix;
     }
 
     public static final String getRandomString(Integer count) {

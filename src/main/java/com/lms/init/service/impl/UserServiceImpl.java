@@ -1,5 +1,6 @@
 package com.lms.init.service.impl;
 
+import cn.dev33.satoken.stp.StpUtil;
 import cn.hutool.core.io.FileUtil;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
@@ -7,22 +8,24 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.lms.contants.HttpCode;
 import com.lms.init.client.OssClient;
-import com.lms.init.config.AppConfig;
 import com.lms.init.config.OssProperties;
-import com.lms.init.constants.CommonConstants;
-import com.lms.init.constants.UserConstants;
-import com.lms.init.entity.dao.User;
-import com.lms.init.entity.dto.*;
-import com.lms.init.entity.vo.LoginUserVo;
-import com.lms.init.entity.vo.UserVo;
+import com.lms.init.constants.CommonConstant;
+import com.lms.init.constants.FileConstant;
+import com.lms.init.constants.UserConstant;
+import com.lms.init.model.dto.email.SysSettingsDto;
+import com.lms.init.model.dto.user.*;
+import com.lms.init.model.entity.User;
+import com.lms.init.model.vo.UserVo;
 import com.lms.init.exception.BusinessException;
 import com.lms.init.mapper.UserMapper;
-import com.lms.init.service.IUserService;
+import com.lms.init.service.UserService;
 import com.lms.init.utils.MybatisUtils;
 import com.lms.init.utils.StringTools;
+import com.lms.redis.RedisCache;
 import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.BeanUtils;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
@@ -35,13 +38,15 @@ import javax.servlet.http.HttpServletRequest;
 import java.io.IOException;
 import java.util.*;
 
-import static com.lms.init.constants.FileConstants.STATIC_REQUEST_PREFIX;
-import static com.lms.init.constants.UserConstants.*;
-import static com.lms.init.entity.factory.UserFactory.USER_CONVERTER;
+import static com.lms.init.constants.FileConstant.STATIC_REQUEST_PREFIX;
+import static com.lms.init.model.factory.UserFactory.USER_CONVERTER;
 
 
+/**
+ * @author lms2000
+ */
 @Service
-public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IUserService {
+public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements UserService {
 
     @Resource
     private UserMapper userMapper;
@@ -60,8 +65,15 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
     @Resource
     private OssProperties ossProperties;
 
+    /**
+     * 发送人
+     */
+    @Value("${spring.mail.username}")
+    private String sendUserName;
+
     @Resource
-    private AppConfig appConfig;
+    private RedisCache redisCache;
+
 
 
     /**
@@ -70,6 +82,11 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
     private static final String SALT = "luomosan";
 
 
+    /**
+     * 管理员添加用户
+     * @param addUserDto
+     * @return
+     */
     @Override
     public Long addUser(AddUserDto addUserDto) {
 
@@ -86,9 +103,14 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         user.setPassword(encryptPassword);
         this.save(user);
 
-        return user.getUid();
+        return user.getId();
     }
 
+    /**
+     * 用户注册
+     * @param registerUserDto
+     * @return
+     */
     @Override
     public Boolean registerUser(RegisterUserDto registerUserDto) {
 
@@ -102,15 +124,14 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
 
         User user=new User();
         BeanUtils.copyProperties(registerUserDto,user);
-        user.setUserRole(DEFAULT_ROLE);
-        user.setNickname("user");
+        user.setUserRole(UserConstant.DEFAULT_ROLE);
+        user.setNickname("user_"+ System.currentTimeMillis());
         user.setPassword(encryptPassword);
-
-        return  this.save(user);
+        return this.save(user);
     }
 
     @Override
-    public LoginUserVo userLogin(LoginDto loginDto, HttpServletRequest request) {
+    public UserVo userLogin(LoginDto loginDto) {
         // 1. 校验
         String username = loginDto.getUsername();
         String password = loginDto.getPassword();
@@ -121,73 +142,43 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
                 .eq("password",encryptPassword));
         // 用户不存在
         if (user == null) {
-//            log.info("user login failed, userAccount cannot match userPassword");
             throw new BusinessException(HttpCode.PARAMS_ERROR, "用户不存在或密码错误");
         }
-        // 3. 记录用户的登录态
-        request.getSession().setAttribute(USER_LOGIN_STATE, user);
-        LoginUserVo loginUserVo=new LoginUserVo();
-        BeanUtils.copyProperties(user,loginUserVo);
-        return loginUserVo;
+        //登录
+        StpUtil.login(user.getId());
+        return USER_CONVERTER.toUserVo(user);
 
     }
 
+    /**
+     * 管理员修改用户
+     * @param userDto
+     * @return
+     */
     @Override
     public Boolean updateUser(UpdateUserDto userDto) {
         Integer userId = userDto.getUid();
         //不可以修改超级管理员
         BusinessException.throwIfOperationAdmin(userId);
-        BusinessException.throwIfNot(MybatisUtils.existCheck(this,Map.of("uid",userId,
-                "delete_flag",NOT_DELETED)));
+        BusinessException.throwIfNot(MybatisUtils.existCheck(this,Map.of("id",userId)));
         User user = new User();
         BeanUtils.copyProperties(userDto, user);
-        //判断使用配额是否高于修改后用户总容量
-        User byId = this.getById(userId);
-
        return this.updateById(user);
     }
-
     @Override
-    public LoginUserVo getLoginUser(HttpServletRequest request) {
-        Object attribute = request.getSession().getAttribute(USER_LOGIN_STATE);
-        User currentUser = (User) attribute;
-        if (currentUser == null || currentUser.getUid() == null) {
-            throw new BusinessException(HttpCode.NOT_LOGIN_ERROR, "未登录");
+    public UserVo getUserById(Long uid) {
+        User user = this.baseMapper.selectById(uid);
+        if(ObjectUtils.isNotEmpty(user)){
+            throw new BusinessException(HttpCode.PARAMS_ERROR,"找不到该用户");
         }
-        Long id = currentUser.getUid();
-//        User byId = this.getById(id);  根据用户id查找用户
-        User byId = userMapper.selectById(id);
-        if (byId == null) {
-            throw new BusinessException(HttpCode.NOT_LOGIN_ERROR, "未登录");
-        }
-        LoginUserVo loginUserVo=new LoginUserVo();
-
-        BeanUtils.copyProperties(byId,loginUserVo);
-        return loginUserVo;
+        return USER_CONVERTER.toUserVo(user);
     }
 
-    @Override
-    public boolean isAdmin(HttpServletRequest request) {
-        Object attribute = request.getSession().getAttribute(USER_LOGIN_STATE);
-
-        User user = (User) attribute;
-
-        return user != null && ADMIN_ROLE.equals(user.getUserRole());
-    }
-
-    @Override
-    public boolean userLogout(HttpServletRequest request) {
-        Object attribute = request.getSession().getAttribute(USER_LOGIN_STATE);
-
-        if (attribute == null) {
-            throw new BusinessException(HttpCode.NOT_LOGIN_ERROR, "未登录");
-        }
-
-        request.getSession().removeAttribute(USER_LOGIN_STATE);
-
-        return true;
-    }
-
+    /**
+     * 分页获取
+     * @param userPageDto
+     * @return
+     */
     @Override
     public Page<UserVo> pageUser(QueryUserPageDto userPageDto) {
         Integer enable = userPageDto.getEnable();
@@ -196,8 +187,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         Integer pageSize = userPageDto.getPageSize();
         QueryWrapper<User> userQueryWrapper = new QueryWrapper<>();
         userQueryWrapper.like(StringUtils.isNotBlank(username), "username", userPageDto.getUsername())
-                .eq(validEnable(enable), "enable", userPageDto.getEnable())
-                .eq("delete_flag", NOT_DELETED);
+                .eq(validEnable(enable), "enable", userPageDto.getEnable());
         Page<User> page = this.page(new Page<>(pageNum, pageSize), userQueryWrapper);
         List<User> records = page.getRecords();
 
@@ -207,24 +197,28 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         return result;
     }
     public boolean validEnable(Integer enable) {
-        return ObjectUtils.isNotEmpty(enable) && (ENABLE.equals(enable) || DISABLE.equals(enable));
+        return ObjectUtils.isNotEmpty(enable) && (UserConstant.ENABLE.equals(enable) || UserConstant.DISABLE.equals(enable));
     }
-
-
-
-
-
-
     @Override
     public Boolean enableUser(Long id) {
-        BusinessException.throwIf(id==1);
-        return updateById(User.builder().uid(id).enable(ENABLE).build());
+        BusinessException.throwIf(id.equals(UserConstant.ADMIN_UID));
+        Long count = this.baseMapper.selectCount(new QueryWrapper<User>().eq("id", id));
+        BusinessException.throwIf(count<1,HttpCode.PARAMS_ERROR,"用户不存在");
+        User user=new User();
+        user.setId(id);
+        user.setEnable(UserConstant.ENABLE);
+        return updateById(user);
     }
 
     @Override
     public Boolean disableUser(Long id) {
-        BusinessException.throwIf(id==1);
-        return updateById(User.builder().uid(id).enable(UserConstants.DISABLE).build());
+        BusinessException.throwIf(id.equals(UserConstant.ADMIN_UID));
+        Long count = this.baseMapper.selectCount(new QueryWrapper<User>().eq("id", id));
+        BusinessException.throwIf(count<1,HttpCode.PARAMS_ERROR,"用户不存在");
+        User user=new User();
+        user.setId(id);
+        user.setEnable(UserConstant.DISABLE);
+        return updateById(user);
     }
 
 
@@ -238,12 +232,12 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
     @Override
     public Boolean deleteUser(List<Long> uids) {
         //不可以删除超级管理员
-        BusinessException.throwIf(uids.contains(1));
+        BusinessException.throwIf(uids.contains(UserConstant.ADMIN_UID));
         //集合包括不存在的用户
-        List<User> userIdList = this.list(new QueryWrapper<User>().in("uid", uids));
+        List<User> userIdList = this.list(new QueryWrapper<User>().in("id", uids));
         BusinessException.throwIf(userIdList.size() != uids.size());
         //还得删除用户角色表信息？
-        return this.update(new UpdateWrapper<User>().set("delete_flag", DELETED).in("uid", uids));
+        return this.update(new UpdateWrapper<User>().in("id", uids));
     }
 
     @Override
@@ -252,9 +246,9 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         String newPassword = resetPasswordDto.getNewPassword();
 
         String encodeOldPassword =  DigestUtils.md5DigestAsHex((SALT + oldPassword).getBytes());
-        //密码不对就报错
+        //密码不对
         BusinessException
-                .throwIfNot(MybatisUtils.existCheck(this, Map.of("uid", uid,
+                .throwIfNot(MybatisUtils.existCheck(this, Map.of("id", uid,
                         "password", encodeOldPassword)), HttpCode.PARAMS_ERROR);
 
         //如果新旧密码一致就直接返回
@@ -262,51 +256,49 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
             return false;
         }
         String encodeNewPassword =  DigestUtils.md5DigestAsHex((SALT + newPassword).getBytes());
-        return updateById(User.builder().uid(uid).password(encodeNewPassword).build());
+        User user =new User();
+        user.setId(uid);
+        user.setPassword(encodeNewPassword);
+        return updateById(user);
     }
 
-    @Override
-    public String uploadAvatar(MultipartFile file, Long uid) {
-        //校验文件
-        validFile(file);
-
-        User user = this.getById(uid);
-        String bucketName = "bucket_user_" + uid;
-
-
-        if (!user.getAvatar().equals("#")) {
-            String[] split = user.getAvatar().split(bucketName);
-            ossClient.deleteObject(bucketName, split[1]);
-        }
-
-        //上传文件
-
-        String filePath;
-        try {
-            String randomPath =
-                    com.lms.init.utils.FileUtil.generatorFileName(file.getOriginalFilename() == null ? file.getName() : file.getOriginalFilename());
-            filePath = "avatar/" + randomPath;
-            ossClient.putObject(bucketName, filePath, file.getInputStream());
-
-        } catch (IOException e) {
-            throw new BusinessException(HttpCode.OPERATION_ERROR, "上传头像失败");
-        }
-
-        String fileUrl = com.lms.init.utils.FileUtil.getFileUrl(ossProperties.getEndpoint(), STATIC_REQUEST_PREFIX, bucketName, filePath);
-        this.updateById(User.builder().uid(uid).avatar(fileUrl).build());
-
-        return fileUrl;
-    }
+//    @Override
+//    public String uploadAvatar(MultipartFile file, Long uid) {
+//        //校验文件
+//        validFile(file);
+//        User user = this.getById(uid);
+//        String bucketName = "bucket_user_" + uid;
+//        if (!user.getAvatar().equals(FileConstant.DEFAULT_URL)) {
+//            String[] split = user.getAvatar().split(bucketName);
+//            ossClient.deleteObject(bucketName, split[1]);
+//        }
+//        //上传文件
+//        String filePath;
+//        try {
+//            String randomPath =
+//                    com.lms.init.utils.FileUtil.generatorFileName(file.getOriginalFilename() == null ? file.getName() : file.getOriginalFilename());
+//            filePath = "avatar/" + randomPath;
+//            ossClient.putObject(bucketName, filePath, file.getInputStream());
+//
+//        } catch (IOException e) {
+//            throw new BusinessException(HttpCode.OPERATION_ERROR, "上传头像失败");
+//        }
+//
+//        String fileUrl = com.lms.init.utils.FileUtil.getFileUrl(ossProperties.getEndpoint(), STATIC_REQUEST_PREFIX, bucketName, filePath);
+//        this.updateById(User.builder().uid(uid).avatar(fileUrl).build());
+//
+//        return fileUrl;
+//    }
 
 
     @Override
     public String sendEmail(String email, Integer type) {
         //如果是注册，校验邮箱是否已存在
-        if (Objects.equals(type, CommonConstants.ZERO)) {
-            BusinessException.throwIf(MybatisUtils.existCheck(this,Map.of("email",email)));
+        if (Objects.equals(type, CommonConstant.ZERO)) {
+            BusinessException.throwIf(MybatisUtils.existCheck(this,Map.of("email",email)),HttpCode.PARAMS_ERROR,"邮箱被占用");
         }
         //随机的邮箱验证码
-        String code = StringTools.getRandomNumber(CommonConstants.LENGTH_5);
+        String code = StringTools.getRandomNumber(CommonConstant.LENGTH_5);
         sendEmailCode(email, code);
         return code;
     }
@@ -316,7 +308,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
 
             MimeMessageHelper helper = new MimeMessageHelper(message, true);
             //邮件发件人
-            helper.setFrom(appConfig.getSendUserName());
+            helper.setFrom(sendUserName);
             //邮件收件人 1或多个
             helper.setTo(toEmail);
 
@@ -337,30 +329,14 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
     /**
      * 修改当前用户信息
      * @param userDto
-     * @param request
      * @return
      */
     @Override
-    public Boolean updateCurrentUser(UpdateCurrentUserDto userDto, HttpServletRequest request) {
-
-        Long uid = this.getLoginUser(request).getUid();
-        return this.updateById(User.builder().uid(uid)
-                .nickname(userDto.getNickname()).email(userDto.getEmail()).build());
+    public Boolean updateCurrentUser(UpdateCurrentUserDto userDto, Long uid) {
+        User user=new User();
+        user.setNickname(userDto.getNickname());
+        user.setEmail(userDto.getEmail());
+        user.setId(uid);
+        return this.updateById(user);
     }
-
-    private void validFile(MultipartFile multipartFile) {
-        // 文件大小
-        long fileSize = multipartFile.getSize();
-        // 文件后缀
-        String fileSuffix = FileUtil.getSuffix(multipartFile.getOriginalFilename());
-        final long ONE_M = 1024 * 1024 * 10L;
-        if (fileSize > ONE_M) {
-            throw new BusinessException(HttpCode.PARAMS_ERROR, "文件大小不能超过 10M");
-        }
-        if (!Arrays.asList("jpeg", "jpg", "svg", "png", "webp").contains(fileSuffix)) {
-            throw new BusinessException(HttpCode.PARAMS_ERROR, "文件类型错误");
-        }
-    }
-
-
 }

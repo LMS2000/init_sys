@@ -3,17 +3,20 @@ package com.lms.init.controller;
 
 
 
+import cn.dev33.satoken.annotation.SaCheckLogin;
+import cn.dev33.satoken.annotation.SaCheckRole;
+import cn.dev33.satoken.stp.StpUtil;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lms.contants.HttpCode;
 
-import com.lms.init.annotation.AuthCheck;
-import com.lms.init.constants.UserConstants;
-import com.lms.init.entity.dao.User;
-import com.lms.init.entity.dto.*;
-import com.lms.init.entity.vo.LoginUserVo;
-import com.lms.init.entity.vo.UserVo;
+
+import com.lms.init.constants.UserConstant;
+import com.lms.init.model.dto.email.SendEmailDto;
+import com.lms.init.model.dto.user.*;
+import com.lms.init.model.entity.User;
+import com.lms.init.model.vo.UserVo;
 import com.lms.init.exception.BusinessException;
-import com.lms.init.service.IUserService;
+import com.lms.init.service.UserService;
 import com.lms.init.utils.CreateImageCode;
 import com.lms.result.EnableResponseAdvice;
 import io.swagger.annotations.Api;
@@ -30,8 +33,7 @@ import javax.servlet.http.HttpSession;
 import java.io.IOException;
 import java.util.List;
 
-import static com.lms.init.constants.UserConstants.ENABLE;
-import static com.lms.init.entity.factory.UserFactory.USER_CONVERTER;
+import static com.lms.init.model.factory.UserFactory.USER_CONVERTER;
 
 
 @RestController
@@ -41,7 +43,7 @@ import static com.lms.init.entity.factory.UserFactory.USER_CONVERTER;
 public class UserController {
 
     @Resource
-    private IUserService userService;
+    private UserService userService;
 
 
     /**
@@ -52,18 +54,20 @@ public class UserController {
      */
     @PostMapping("/login")
     @ApiOperation("用户登录")
-    public LoginUserVo userLogin(@Validated @RequestBody LoginDto loginDto, HttpServletRequest request){
+    public UserVo userLogin(@Validated @RequestBody LoginDto loginDto, HttpServletRequest request){
 
 
         try{
             //校验码校验
-            String trueCode =(String)request.getSession().getAttribute(UserConstants.CHECK_CODE_KEY);
+            String trueCode =(String)request.getSession().getAttribute(UserConstant.CHECK_CODE_KEY);
             String code = loginDto.getCode();
             BusinessException.throwIf(StringUtils.isEmpty(trueCode)||!trueCode.equals(code),HttpCode.PARAMS_ERROR,
                     "图片校验码不正确");
-            return userService.userLogin(loginDto, request);
+            UserVo userVo = userService.userLogin(loginDto);
+            StpUtil.login(userVo.getId());
+            return userVo;
         }finally {
-            request.getSession().removeAttribute(UserConstants.CHECK_CODE_KEY);
+            request.getSession().removeAttribute(UserConstant.CHECK_CODE_KEY);
         }
     }
 
@@ -75,12 +79,12 @@ public class UserController {
     public Boolean  userRegister(HttpSession session, @Validated @RequestBody RegisterUserDto registerUserDto){
 
         try{
-            String code = (String) session.getAttribute(UserConstants.EMAIIL_HEADER);
+            String code = (String) session.getAttribute(UserConstant.EMAIIL_HEADER);
             BusinessException.throwIf(StringUtils.isEmpty(code)||!code.equals(registerUserDto.getEmailCode()),
                     HttpCode.PARAMS_ERROR,"邮箱验证码错误");
             return userService.registerUser(registerUserDto);
         }finally {
-            session.removeAttribute(UserConstants.EMAIIL_HEADER);
+            session.removeAttribute(UserConstant.EMAIIL_HEADER);
         }
     }
 
@@ -96,9 +100,9 @@ public class UserController {
         String code = vCode.getCode();
         HttpSession session = request.getSession();
         if (type == null || type == 0) {
-            session.setAttribute(UserConstants.CHECK_CODE_KEY,code);
+            session.setAttribute(UserConstant.CHECK_CODE_KEY,code);
         } else {
-            session.setAttribute(UserConstants.CHECK_CODE_KEY_EMAIL,code);
+            session.setAttribute(UserConstant.CHECK_CODE_KEY_EMAIL,code);
         }
         vCode.write(response.getOutputStream());
     }
@@ -115,34 +119,31 @@ public class UserController {
         String email = sendEmailDto.getEmail();
         Integer type = sendEmailDto.getType();
         try {
-            if (!code.equalsIgnoreCase((String) session.getAttribute(UserConstants.CHECK_CODE_KEY_EMAIL))) {
+            if (!code.equalsIgnoreCase((String) session.getAttribute(UserConstant.CHECK_CODE_KEY_EMAIL))) {
                 throw new BusinessException(HttpCode.PARAMS_ERROR,"图片验证码不正确");
             }
             String emailCode = userService.sendEmail(email, type);
-            session.setAttribute(UserConstants.EMAIIL_HEADER,emailCode);
+            session.setAttribute(UserConstant.EMAIIL_HEADER,emailCode);
             return true;
         } finally {
-            session.removeAttribute(UserConstants.CHECK_CODE_KEY_EMAIL);
+            session.removeAttribute(UserConstant.CHECK_CODE_KEY_EMAIL);
         }
     }
 
 
     /**
      * 注销
-     * @param request
      * @return
      */
     @PostMapping("/logout")
     @ApiOperation("用户登出")
-    public Boolean logout(HttpServletRequest request){
-        if (request == null) {
-            throw new BusinessException(HttpCode.PARAMS_ERROR);
-        }
-        return userService.userLogout(request);
+    public Boolean logout(){
+        StpUtil.logout();
+        return true;
     }
 
     @GetMapping("/get/{id}")
-    @AuthCheck(mustRole = UserConstants.ADMIN_ROLE)
+    @SaCheckRole(UserConstant.ADMIN_ROLE)
     public UserVo getUserById(@PathVariable("id") Integer uid){
         User byId = userService.getById(uid);
         return USER_CONVERTER.toUserVo(byId);
@@ -151,14 +152,14 @@ public class UserController {
 
     /**
      * 获取当前用户
-     * @param request
      * @return
      */
     @GetMapping(value = "/get/login")
     @ApiOperation("获取当前用户的登录信息")
-    public LoginUserVo getCurrentUser(HttpServletRequest request){
-        LoginUserVo loginUser = userService.getLoginUser(request);
-        return loginUser;
+    @SaCheckLogin
+    public UserVo getCurrentUser(){
+        Long loginId = Long.parseLong((String)StpUtil.getLoginId());
+        return userService.getUserById(loginId);
     }
 
 
@@ -172,7 +173,7 @@ public class UserController {
      */
     @PostMapping("/add")
     @ApiOperation("添加用户")
-    @AuthCheck(mustRole = UserConstants.ADMIN_ROLE)
+    @SaCheckRole(UserConstant.ADMIN_ROLE)
     public Long add(@Validated @RequestBody(required = true) AddUserDto userDto) {
         return userService.addUser(userDto);
     }
@@ -184,7 +185,7 @@ public class UserController {
      */
     @PostMapping("/delete")
     @ApiOperation("批量删除用户")
-    @AuthCheck(mustRole = UserConstants.ADMIN_ROLE)
+    @SaCheckRole(UserConstant.ADMIN_ROLE)
     public Boolean removeUser( @RequestParam("userIds") List<Long> userIds){
         return userService.deleteUser(userIds);
     }
@@ -203,29 +204,14 @@ public class UserController {
     public Boolean resetPassword(@RequestBody ResetPasswordDto resetPasswordDto, HttpServletRequest request) {
         HttpSession session = request.getSession();
         try{
-            String code = (String) session.getAttribute(UserConstants.EMAIIL_HEADER);
+            String code = (String) session.getAttribute(UserConstant.EMAIIL_HEADER);
             BusinessException.throwIf(StringUtils.isEmpty(code)||!code.equals(resetPasswordDto.getEmailCode()),
                     HttpCode.PARAMS_ERROR,"邮箱验证码错误");
-            Long uid = userService.getLoginUser(request).getUid();
+            Long uid = Long.parseLong((String) StpUtil.getLoginId());
             return  userService.resetPassword(resetPasswordDto, uid);
         }finally {
-            session.removeAttribute(UserConstants.EMAIIL_HEADER);
+            session.removeAttribute(UserConstant.EMAIIL_HEADER);
         }
-
-
-    }
-
-    /**
-     * 上传头像
-     *
-     * @param file
-     * @return 返回头像图片地址0
-     */
-    @PostMapping("/uploadAvatar")
-    @ApiOperation("上次头像")
-    public String uploadAvatar(@RequestBody MultipartFile file,HttpServletRequest request) {
-        Long uid = userService.getLoginUser(request).getUid();
-        return userService.uploadAvatar(file, uid);
     }
 
 
@@ -234,7 +220,7 @@ public class UserController {
      * @param userPageDto
      * @return
      */
-    @AuthCheck(mustRole = UserConstants.ADMIN_ROLE)
+    @SaCheckRole(UserConstant.ADMIN_ROLE)
     @PostMapping("/page")
     @ApiOperation("分页条件获取用户列表")
     public Page<UserVo> getUserPage(@RequestBody QueryUserPageDto userPageDto) {
@@ -248,12 +234,12 @@ public class UserController {
      * @param changeUserEnableDto
      * @return
      */
-    @AuthCheck(mustRole = UserConstants.ADMIN_ROLE)
+    @SaCheckRole(UserConstant.ADMIN_ROLE)
     @PostMapping("/change/enable")
     @ApiOperation("启用或者禁用用户")
     public Boolean changeUserEnable(@Validated @RequestBody ChangeUserEnableDto changeUserEnableDto) {
         Integer enable = changeUserEnableDto.getEnable();
-        if (enable.equals(ENABLE)) {
+        if (enable.equals(UserConstant.ENABLE)) {
             return userService.enableUser(changeUserEnableDto.getUid());
         } else {
             return userService.disableUser(changeUserEnableDto.getUid());
@@ -266,7 +252,7 @@ public class UserController {
      * @return
      */
     @PostMapping("/update")
-    @AuthCheck(mustRole = UserConstants.ADMIN_ROLE)
+    @SaCheckRole(UserConstant.ADMIN_ROLE)
     @ApiOperation("修改用户")
     public Boolean updateUser(@Validated @RequestBody UpdateUserDto userDto){
         return userService.updateUser(userDto);
@@ -274,8 +260,9 @@ public class UserController {
 
     @PostMapping("/update/current")
     @ApiOperation("修改当前用户")
-    public Boolean updateCurrentUser(@Validated @RequestBody  UpdateCurrentUserDto userDto,HttpServletRequest request){
-        return userService.updateCurrentUser(userDto,request);
+    public Boolean updateCurrentUser(@Validated @RequestBody UpdateCurrentUserDto userDto){
+        Long uid = Long.parseLong((String) StpUtil.getLoginId());
+        return userService.updateCurrentUser(userDto,uid);
     }
 
 

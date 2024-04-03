@@ -171,6 +171,7 @@ export default {
               })
 
             }else{
+              this.changeCheckCode(0)
                this.$modal.msgError("登录失败，账号或者密码错误");
                 this.loading = false;
             }

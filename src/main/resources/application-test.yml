@@ -1,0 +1,51 @@
+#自设计的工具库starter,enableGlobalResponse开启全局响应，enablePage开启分页配置
+lms:
+  global:
+    enableRedis: true
+
+
+spring:
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://localhost:3306/init_pro?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai
+    username: root
+    password: 123456
+  redis:
+    host: localhost
+    port: 6379
+  mail:
+    host: smtp.qq.com
+    port: 465
+    username: 956287248@qq.com
+    password: xxxxxxxxxxx
+    default-encoding: UTF-8
+    properties:
+      mail:
+        smtp:
+          socketFactory:
+            class: javax.net.ssl.SSLSocketFactory
+        debug: true
+#开启swagger配置
+swagger:
+  open: true
+  scanPackage: com.lms.init
+  title: init-server
+  version: 1.0.0
+  description: 初始化项目
+
+# 文件存储的路径
+oss:
+  #root-path 具体存储的文件路径
+  root-path: E:\question_sys\question_file_home
+  #endpoint:  后端的地址
+  endpoint: http://localhost:9000/api
+
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+  global-config:
+    db-config:
+      logic-delete-field: deleteFlag # 全局逻辑删除的实体字段名
+      logic-delete-value: 1 # 逻辑已删除值（默认为 1）
+      logic-not-delete-value: 0 # 逻辑未删除值（默认为 0）
