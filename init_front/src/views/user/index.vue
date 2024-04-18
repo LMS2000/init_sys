@@ -496,7 +496,7 @@
         this.reset();
         this.open = true;
 
-        const userId = row.uid || this.ids;
+        const userId = row.id || this.ids;
         getById(userId).then(res => {
           this.form = res.data
         })

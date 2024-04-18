@@ -1,6 +1,6 @@
 module.exports = {
 
-  title: '深度学习题库练习系统',
+  title: '初始化后台系统',
 
   /**
    * @type {boolean} true | false

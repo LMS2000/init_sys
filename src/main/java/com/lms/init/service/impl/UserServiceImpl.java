@@ -1,7 +1,7 @@
 package com.lms.init.service.impl;
 
 import cn.dev33.satoken.stp.StpUtil;
-import cn.hutool.core.io.FileUtil;
+import cn.hutool.extra.spring.SpringUtil;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -10,6 +10,8 @@ import com.lms.contants.HttpCode;
 import com.lms.init.constants.CommonConstant;
 import com.lms.init.constants.EmailConstant;
 import com.lms.init.constants.UserConstant;
+import com.lms.init.event.SendEmailEvent;
+import com.lms.init.model.dto.email.EmailMessage;
 import com.lms.init.model.dto.email.SendEmailDto;
 import com.lms.init.model.dto.user.*;
 import com.lms.init.model.entity.User;
@@ -121,8 +123,6 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         if (user == null) {
             throw new BusinessException(HttpCode.PARAMS_ERROR, "用户不存在或密码错误");
         }
-        //登录
-        StpUtil.login(user.getId());
         return USER_CONVERTER.toUserVo(user);
 
     }
@@ -145,7 +145,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     @Override
     public UserVo getUserById(Long uid) {
         User user = this.baseMapper.selectById(uid);
-        if(ObjectUtils.isNotEmpty(user)){
+        if(ObjectUtils.isEmpty(user)){
             throw new BusinessException(HttpCode.PARAMS_ERROR,"找不到该用户");
         }
         return USER_CONVERTER.toUserVo(user);
@@ -164,7 +164,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         Integer pageSize = userPageDto.getPageSize();
         QueryWrapper<User> userQueryWrapper = new QueryWrapper<>();
         userQueryWrapper.like(StringUtils.isNotBlank(username), "username", userPageDto.getUsername())
-                .eq(validEnable(enable), "enable", userPageDto.getEnable());
+                .eq(validEnable(enable), "is_enable", userPageDto.getEnable());
         Page<User> page = this.page(new Page<>(pageNum, pageSize), userQueryWrapper);
         List<User> records = page.getRecords();
 
@@ -240,7 +240,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     }
 
     @Override
-    public String sendEmail(SendEmailDto sendEmailDto) {
+    public void sendEmail(SendEmailDto sendEmailDto) {
         String email = sendEmailDto.getEmail();
         Integer type = sendEmailDto.getType();
         //如果是注册，校验邮箱是否已存在
@@ -252,10 +252,18 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         boolean hasCode = redisCache.getCacheObjectOnlyRedis(EmailConstant.EMAIIL_HEADER + type + "_" + email) != null;
 
         com.lms.exception.BusinessException.throwIf(hasCode, HttpCode.PARAMS_ERROR, "重复发送邮件");
-        //随机的邮箱验证码
-        String code = StringTools.getRandomNumber(CommonConstant.LENGTH_5);
-//        sendEmailCode(email, code);
-        return code;
+        EmailMessage emailMessage=new EmailMessage();
+        BeanUtils.copyProperties(sendEmailDto,emailMessage);
+        publishSendEmailEvent(emailMessage);
+    }
+
+    /**
+     * 发布发送邮件事件
+     * @param emailMessage
+     */
+    private void publishSendEmailEvent(EmailMessage emailMessage){
+        SendEmailEvent sendEmailEvent = new SendEmailEvent(this, emailMessage);
+        SpringUtil.publishEvent(sendEmailEvent);
     }
 
     /**

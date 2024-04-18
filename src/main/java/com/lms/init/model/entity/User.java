@@ -1,15 +1,17 @@
 package com.lms.init.model.entity;
 
 
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.lms.common.DeleteFlagEntity;
 import lombok.*;
 
 
+/**
+ * @author lms2000
+ */
 @EqualsAndHashCode(callSuper = true)
-@AllArgsConstructor
 @NoArgsConstructor
 @Data
-@Builder
 public class User extends DeleteFlagEntity {
 
 
@@ -20,6 +22,7 @@ public class User extends DeleteFlagEntity {
 
     private String email;
 
+    @TableField("is_enable")
     private  Integer enable;
 
     private String avatar;

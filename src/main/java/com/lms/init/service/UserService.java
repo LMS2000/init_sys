@@ -71,5 +71,5 @@ public interface UserService extends IService<User> {
 //    String uploadAvatar(MultipartFile file, Long uid);
 
     Boolean  updateCurrentUser(UpdateCurrentUserDto userDto, Long uid);
-    String sendEmail(SendEmailDto sendEmailDto);
+    void sendEmail(SendEmailDto sendEmailDto);
 }

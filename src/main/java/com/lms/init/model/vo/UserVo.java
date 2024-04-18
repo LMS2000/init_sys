@@ -1,5 +1,6 @@
 package com.lms.init.model.vo;
 
+import com.lms.common.BaseVO;
 import com.lms.common.DeleteFlagEntity;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -10,12 +11,10 @@ import lombok.extern.slf4j.Slf4j;
 /**
  * @author lms2000
  */
-@AllArgsConstructor
 @NoArgsConstructor
 @Data
-@Builder
 @Slf4j
-public class UserVo extends DeleteFlagEntity {
+public class UserVo extends BaseVO {
 
 
     private String avatar;
