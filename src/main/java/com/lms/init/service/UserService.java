@@ -3,6 +3,7 @@ package com.lms.init.service;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.IService;
+import com.lms.init.model.dto.email.SendEmailDto;
 import com.lms.init.model.dto.user.*;
 import com.lms.init.model.entity.User;
 import com.lms.init.model.vo.UserVo;
@@ -70,5 +71,5 @@ public interface UserService extends IService<User> {
 //    String uploadAvatar(MultipartFile file, Long uid);
 
     Boolean  updateCurrentUser(UpdateCurrentUserDto userDto, Long uid);
-    String sendEmail(String email ,Integer type);
+    String sendEmail(SendEmailDto sendEmailDto);
 }

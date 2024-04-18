@@ -7,12 +7,10 @@ import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.lms.contants.HttpCode;
-import com.lms.init.client.OssClient;
-import com.lms.init.config.OssProperties;
 import com.lms.init.constants.CommonConstant;
-import com.lms.init.constants.FileConstant;
+import com.lms.init.constants.EmailConstant;
 import com.lms.init.constants.UserConstant;
-import com.lms.init.model.dto.email.SysSettingsDto;
+import com.lms.init.model.dto.email.SendEmailDto;
 import com.lms.init.model.dto.user.*;
 import com.lms.init.model.entity.User;
 import com.lms.init.model.vo.UserVo;
@@ -25,20 +23,12 @@ import com.lms.redis.RedisCache;
 import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.BeanUtils;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.mail.javamail.JavaMailSender;
-import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
 import org.springframework.util.DigestUtils;
-import org.springframework.web.multipart.MultipartFile;
-
 import javax.annotation.Resource;
-import javax.mail.internet.MimeMessage;
-import javax.servlet.http.HttpServletRequest;
-import java.io.IOException;
 import java.util.*;
 
-import static com.lms.init.constants.FileConstant.STATIC_REQUEST_PREFIX;
+
 import static com.lms.init.model.factory.UserFactory.USER_CONVERTER;
 
 
@@ -53,23 +43,10 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
 
 
 
-    @Resource
-    private JavaMailSender javaMailSender;
-
-
-    @Resource
-    private OssClient ossClient;
 
 
 
-    @Resource
-    private OssProperties ossProperties;
 
-    /**
-     * 发送人
-     */
-    @Value("${spring.mail.username}")
-    private String sendUserName;
 
     @Resource
     private RedisCache redisCache;
@@ -262,70 +239,25 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         return updateById(user);
     }
 
-//    @Override
-//    public String uploadAvatar(MultipartFile file, Long uid) {
-//        //校验文件
-//        validFile(file);
-//        User user = this.getById(uid);
-//        String bucketName = "bucket_user_" + uid;
-//        if (!user.getAvatar().equals(FileConstant.DEFAULT_URL)) {
-//            String[] split = user.getAvatar().split(bucketName);
-//            ossClient.deleteObject(bucketName, split[1]);
-//        }
-//        //上传文件
-//        String filePath;
-//        try {
-//            String randomPath =
-//                    com.lms.init.utils.FileUtil.generatorFileName(file.getOriginalFilename() == null ? file.getName() : file.getOriginalFilename());
-//            filePath = "avatar/" + randomPath;
-//            ossClient.putObject(bucketName, filePath, file.getInputStream());
-//
-//        } catch (IOException e) {
-//            throw new BusinessException(HttpCode.OPERATION_ERROR, "上传头像失败");
-//        }
-//
-//        String fileUrl = com.lms.init.utils.FileUtil.getFileUrl(ossProperties.getEndpoint(), STATIC_REQUEST_PREFIX, bucketName, filePath);
-//        this.updateById(User.builder().uid(uid).avatar(fileUrl).build());
-//
-//        return fileUrl;
-//    }
-
-
     @Override
-    public String sendEmail(String email, Integer type) {
+    public String sendEmail(SendEmailDto sendEmailDto) {
+        String email = sendEmailDto.getEmail();
+        Integer type = sendEmailDto.getType();
         //如果是注册，校验邮箱是否已存在
         if (Objects.equals(type, CommonConstant.ZERO)) {
-            BusinessException.throwIf(MybatisUtils.existCheck(this,Map.of("email",email)),HttpCode.PARAMS_ERROR,"邮箱被占用");
+            com.lms.exception.BusinessException.throwIf(MybatisUtils.existCheck(this, Map.of("email", email)), HttpCode.PARAMS_ERROR,
+                    "邮箱已占用");
         }
+        //检查redis中是否有相同的邮箱
+        boolean hasCode = redisCache.getCacheObjectOnlyRedis(EmailConstant.EMAIIL_HEADER + type + "_" + email) != null;
+
+        com.lms.exception.BusinessException.throwIf(hasCode, HttpCode.PARAMS_ERROR, "重复发送邮件");
         //随机的邮箱验证码
         String code = StringTools.getRandomNumber(CommonConstant.LENGTH_5);
-        sendEmailCode(email, code);
+//        sendEmailCode(email, code);
         return code;
     }
-    private void sendEmailCode(String toEmail, String code) {
-        try {
-            MimeMessage message = javaMailSender.createMimeMessage();
 
-            MimeMessageHelper helper = new MimeMessageHelper(message, true);
-            //邮件发件人
-            helper.setFrom(sendUserName);
-            //邮件收件人 1或多个
-            helper.setTo(toEmail);
-
-            SysSettingsDto sysSettingsDto = new SysSettingsDto();
-
-            //邮件主题
-            helper.setSubject(sysSettingsDto.getRegisterEmailTitle());
-            //邮件内容
-            helper.setText(String.format(sysSettingsDto.getRegisterEmailContent(), code));
-            //邮件发送时间
-            helper.setSentDate(new Date());
-            javaMailSender.send(message);
-        } catch (Exception e) {
-            log.error("邮件发送失败", e);
-            throw new BusinessException(HttpCode.OPERATION_ERROR,"邮件发送失败");
-        }
-    }
     /**
      * 修改当前用户信息
      * @param userDto

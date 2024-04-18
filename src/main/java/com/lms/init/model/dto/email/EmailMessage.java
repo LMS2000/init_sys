@@ -4,8 +4,15 @@ import lombok.Data;
 
 import java.io.Serializable;
 
+/**
+ * @author lms2000
+ */
 @Data
-public class SysSettingsDto implements Serializable {
+public class EmailMessage implements Serializable {
+
+
+    private String email;
+    private Integer msgType;
     /**
      * 注册发送邮件标题
      */

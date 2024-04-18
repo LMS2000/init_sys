@@ -17,6 +17,7 @@ spring:
   redis:
     host: localhost
     port: 6379
+    password: c219034
   mail:
     host: smtp.qq.com
     port: 465

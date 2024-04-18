@@ -18,6 +18,7 @@ import com.lms.init.model.vo.UserVo;
 import com.lms.init.exception.BusinessException;
 import com.lms.init.service.UserService;
 import com.lms.init.utils.CreateImageCode;
+import com.lms.redis.RedisCache;
 import com.lms.result.EnableResponseAdvice;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
@@ -44,6 +45,9 @@ public class UserController {
 
     @Resource
     private UserService userService;
+
+    @Resource
+    private RedisCache redisCache;
 
 
     /**
@@ -116,14 +120,11 @@ public class UserController {
     @ApiOperation("邮箱验证码")
     public Boolean sendEmailCode(HttpSession session,@Validated @RequestBody SendEmailDto sendEmailDto) {
         String code = sendEmailDto.getCode();
-        String email = sendEmailDto.getEmail();
-        Integer type = sendEmailDto.getType();
         try {
             if (!code.equalsIgnoreCase((String) session.getAttribute(UserConstant.CHECK_CODE_KEY_EMAIL))) {
                 throw new BusinessException(HttpCode.PARAMS_ERROR,"图片验证码不正确");
             }
-            String emailCode = userService.sendEmail(email, type);
-            session.setAttribute(UserConstant.EMAIIL_HEADER,emailCode);
+            userService.sendEmail(sendEmailDto);
             return true;
         } finally {
             session.removeAttribute(UserConstant.CHECK_CODE_KEY_EMAIL);
