@@ -1,8 +1,4 @@
 package com.lms.init.controller;
-
-
-
-
 import cn.dev33.satoken.annotation.SaCheckLogin;
 import cn.dev33.satoken.annotation.SaCheckRole;
 import cn.dev33.satoken.stp.StpUtil;

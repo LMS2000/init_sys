@@ -8,7 +8,7 @@ CREATE TABLE `user` (
 `email` varchar(30) CHARACTER SET utf8 COLLATE utf8_general_ci DEFAULT NULL,
 `is_delete` tinyint(1) DEFAULT '0',
 `remark` text CHARACTER SET utf8 COLLATE utf8_general_ci,
-`enable` tinyint(1) DEFAULT '0',
+`is_enable` tinyint(1) DEFAULT '0',
 `avatar` varchar(255) CHARACTER SET utf8 COLLATE utf8_general_ci DEFAULT '#',
 `create_time` datetime DEFAULT NULL COMMENT '创建时间',
 `update_time` datetime DEFAULT NULL COMMENT '修改时间',
