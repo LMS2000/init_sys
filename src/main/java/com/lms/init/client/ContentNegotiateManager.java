@@ -1,4 +1,4 @@
-package com.lms.init.config;
+package com.lms.init.client;
 
 import org.springframework.http.MediaTypeFactory;
 

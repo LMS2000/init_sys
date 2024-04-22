@@ -11,6 +11,7 @@ import com.lms.init.client.OssClient;
 import com.lms.init.client.S3OssClient;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 import java.util.Objects;
@@ -24,7 +25,7 @@ import java.util.stream.Stream;
 @EnableConfigurationProperties(OssProperties.class)
 public class OssAutoConfiguration {
 
-    //@Bean
+    @Bean
     @ConditionalOnMissingBean(S3OssClient.class)
     public OssClient ossClient(AmazonS3 amazonS3) {
         return new S3OssClient(amazonS3);
@@ -39,14 +40,15 @@ public class OssAutoConfiguration {
      * @param ossProperties
      * @return
      */
-    //@Bean
+    @Bean
     @ConditionalOnMissingBean(AmazonS3.class)
    // @ConditionalOnProperty(prefix = "oss", name = "enable", havingValue = "true")
     public AmazonS3 amazonS3(OssProperties ossProperties) {
         long nullSize = Stream.<String>builder()
                 .add(ossProperties.getEndpoint())
-                .add(ossProperties.getAccessSecret())
+                .add(ossProperties.getSecretKey())
                 .add(ossProperties.getAccessKey())
+                .add(ossProperties.getBucketName())
                 .build()
                 .filter(s -> Objects.isNull(s))
                 .count();
@@ -54,7 +56,7 @@ public class OssAutoConfiguration {
             throw new RuntimeException("oss 配置错误,请检查");
         }
         AWSCredentials awsCredentials = new BasicAWSCredentials(ossProperties.getAccessKey(),
-                ossProperties.getAccessSecret());
+                ossProperties.getSecretKey());
         AWSCredentialsProvider awsCredentialsProvider = new AWSStaticCredentialsProvider(awsCredentials);
         return AmazonS3Client.builder()
                 .withEndpointConfiguration(new AwsClientBuilder.EndpointConfiguration(ossProperties.getEndpoint(), ossProperties.getRegion()))

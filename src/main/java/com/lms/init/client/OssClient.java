@@ -4,7 +4,6 @@ import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.model.CannedAccessControlList;
 import com.amazonaws.services.s3.model.PutObjectResult;
 import com.amazonaws.services.s3.model.S3Object;
-import com.lms.init.config.ContentNegotiateManager;
 
 import java.io.IOException;
 import java.io.InputStream;

@@ -14,7 +14,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 @Data
 public class OssProperties  implements InitializingBean {
     private String accessKey;
-    private String accessSecret;
+    private String secretKey;
 
     /**
      * endpoint 配置格式为
@@ -41,6 +41,9 @@ public class OssProperties  implements InitializingBean {
      * LocalOssClient需要将文件存放的本地根目录路径
      */
     private String rootPath="";
+
+
+    private String bucketName;
 
 
     private boolean pathStyleAccess = true;
