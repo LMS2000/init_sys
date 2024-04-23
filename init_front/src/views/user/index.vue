@@ -1,32 +1,6 @@
 <template>
   <div class="app-container">
     <el-row :gutter="20">
-      <!--部门数据-->
-      <!--  <el-col :span="4" :xs="24">
-        <div class="head-container">
-          <el-input
-            v-model="deptName"
-            placeholder="请输入部门名称"
-            clearable
-            size="small"
-            prefix-icon="el-icon-search"
-            style="margin-bottom: 20px"
-          />
-        </div>
-        <div class="head-container">
-          <el-tree
-            :data="deptOptions"
-            :props="defaultProps"
-            :expand-on-click-node="false"
-            :filter-node-method="filterNode"
-            ref="tree"
-            node-key="id"
-            default-expand-all
-            highlight-current
-            @node-click="handleNodeClick"
-          />
-        </div>
-      </el-col> -->
       <!--用户数据-->
       <el-col>
         <el-form :model="queryParams" ref="queryForm" size="small" :inline="true" v-show="showSearch"
@@ -85,21 +59,11 @@
             <el-button type="danger" plain icon="el-icon-delete" size="mini" :disabled="multiple" @click="handleDelete">
               删除</el-button>
           </el-col>
-          <!-- <el-col :span="1.5">
-            <el-button type="info" plain icon="el-icon-upload2" size="mini" @click="handleImport"
-              v-hasPermi="['system:user:import']">导入</el-button>
-          </el-col>
-          <el-col :span="1.5">
-            <el-button type="warning" plain icon="el-icon-download" size="mini" @click="handleExport"
-              v-hasPermi="['system:user:export']">导出</el-button>
-          </el-col> -->
-          <!--     <right-toolbar :showSearch.sync="showSearch" @queryTable="getList" :columns="columns"></right-toolbar>
- -->
         </el-row>
 
         <el-table v-loading="loading" :data="userList" @selection-change="handleSelectionChange">
           <el-table-column type="selection" width="50" align="center" />
-          <el-table-column label="用户编号" align="center" key="uid" prop="uid" />
+          <el-table-column label="用户编号" align="center" key="id" prop="id" />
           <el-table-column label="用户名称" align="center" key="username" prop="username" :show-overflow-tooltip="true" />
           <el-table-column label="用户昵称" align="center" key="nickname" prop="nickname" :show-overflow-tooltip="true" />
           <!--          <el-table-column label="部门" align="center" key="deptName" prop="dept.deptName" v-if="columns[3].visible" :show-overflow-tooltip="true" /> -->
@@ -116,7 +80,7 @@
             </template>
           </el-table-column>
           <el-table-column label="操作" align="center" width="160" class-name="small-padding fixed-width">
-            <template slot-scope="scope" v-if="scope.row.uid !== 1">
+            <template slot-scope="scope" v-if="scope.row.id !== 1">
               <el-button size="mini" type="text" icon="el-icon-edit" @click="handleUpdate(scope.row)">修改</el-button>
               <el-button size="mini" type="text" icon="el-icon-delete" @click="handleDelete(scope.row)">删除</el-button>
               <el-dropdown @command="(command) => handleCommand(command, scope.row)" size="mini">
@@ -469,7 +433,7 @@
       // 表单重置
       reset() {
         this.form = {
-          uid: undefined,
+          id: undefined,
           username: undefined,
           nickname: undefined,
           password: undefined,
@@ -526,7 +490,7 @@
       submitForm: function() {
         this.$refs["form"].validate(valid => {
           if (valid) {
-            if (this.form.uid != undefined) {
+            if (this.form.id != undefined) {
               updateUser(this.form).then(response => {
                 this.$modal.msgSuccess("修改成功");
                 this.open = false;

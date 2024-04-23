@@ -17,10 +17,7 @@ import io.swagger.annotations.ApiOperation;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.RandomStringUtils;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestPart;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.File;
@@ -54,8 +51,8 @@ public class FileController {
     @ApiOperationSupport(order = 1)
     @ApiOperation(value = "上传文件")
     public String uploadFile(@RequestPart("file") MultipartFile multipartFile,
-                             UploadFileRequest uploadFileRequest) {
-        String biz = uploadFileRequest.getBiz();
+                             String biz) {
+
         FileUploadBizEnum fileUploadBizEnum = FileUploadBizEnum.getEnumByValue(biz);
         if (fileUploadBizEnum == null) {
             throw new BusinessException(HttpCode.PARAMS_ERROR);

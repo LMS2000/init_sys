@@ -56,7 +56,8 @@
 <script>
 import store from "@/store";
 import { VueCropper } from "vue-cropper";
-import { setAvatar, getCurrentUser} from "../../../api/user.js";
+import { getCurrentUser} from "../../../api/user.js";
+import { setAvatar} from "../../../api/file.js";
 import { debounce } from '@/utils'
 
 export default {
@@ -136,10 +137,11 @@ export default {
     // 上传图片
     uploadImg() {
       this.$refs.cropper.getCropBlob(data => {
-          let file = new File([data], 'filename.jpg', { type: 'image/jpeg' });
+          let file = new File([data], 'uploadFile.jpg', { type: 'image/jpeg' });
 
           let formData = new FormData();
           formData.append("file", file);
+          formData.append("biz","user_avatar")
         setAvatar(formData).then(response => {
           this.open = false;
           this.options.img = response.data;

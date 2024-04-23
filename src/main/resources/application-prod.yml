@@ -7,6 +7,8 @@ lms:
 spring:
   http:
     server:
+      multipart:
+        enable: true
       maxRequestSize: 200
       maxFileSize: 200
   datasource:
@@ -40,10 +42,10 @@ swagger:
 
 oss:
   #root-path: C:\Users\zdh\Desktop\test
-  accessKey: LTAI5t9ghEuf5NYA6oEHVaha
-  secretKey: tsEqA1P5aYzGEiLBY82tK7AqWiYo0n
+  accessKey: xxxxxxxxx
+  secretKey: xxxxxxxxxx
   #endpoint: http://119.91.143.140:20001
-  endpoint: oss-cn-hangzhou.aliyuncs.com
+  endpoint: xxxxxxxxx.com
   localOssClient: false
   pathStyleAccess: false
   bucketName: service-edu-2000

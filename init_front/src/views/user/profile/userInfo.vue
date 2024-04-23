@@ -1,7 +1,7 @@
 <template>
   <el-form ref="form" :model="user" :rules="rules" label-width="80px">
-    <el-form-item label="昵称" prop="nickName">
-       <el-input v-model="nickName" maxlength="50" />
+    <el-form-item label="昵称" prop="nickname">
+       <el-input v-model="nickname" maxlength="50" />
     </el-form-item>
     <el-form-item label="邮箱" prop="email">
       <el-input v-model="email" maxlength="50" />
@@ -25,10 +25,10 @@ export default {
   data() {
     return {
       email:'',
-      nickName:'',
+      nickname:'',
       // 表单校验
       rules: {
-        nickName: [
+        nickname: [
           { required: true, message: "用户昵称不能为空", trigger: "blur" }
         ],
         email: [
@@ -58,7 +58,7 @@ export default {
       this.$refs["form"].validate(valid => {
         if (valid) {
           this.user.email=this.email
-          this.user.nickname=this.nickName
+          this.user.nickname=this.nickname
           updateCurrentUser(this.user).then(response => {
             this.$modal.msgSuccess("修改成功");
           });
