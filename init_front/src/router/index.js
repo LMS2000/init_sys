@@ -103,11 +103,11 @@ const createRouter = () => new Router({
 const router = createRouter()
  router.beforeEach((to, from, next) => {
 
-
+ console.log("进入路由")
      const user = JSON.parse(localStorage.getItem('userInfo'))
         if(user){
           store.commit('SET_AVATAR',user.avatar)
-          console.log(user)
+          console.log("xxx"+user.avatar)
         }
 
          next(); // 允许路由通过

@@ -3,12 +3,15 @@ package com.lms.init.controller;
 import cn.dev33.satoken.annotation.SaCheckLogin;
 import cn.dev33.satoken.stp.StpUtil;
 import cn.hutool.core.io.FileUtil;
+import cn.hutool.extra.spring.SpringUtil;
 import com.github.xiaoymin.knife4j.annotations.ApiOperationSupport;
 import com.lms.contants.HttpCode;
 import com.lms.exception.BusinessException;
 import com.lms.init.client.OssClient;
+import com.lms.init.config.OssProperties;
 import com.lms.init.constants.FileConstant;
-import com.lms.init.model.dto.file.UploadFileRequest;
+import com.lms.init.event.UploadAvatarEvent;
+import com.lms.init.model.dto.file.UploadAvatarMessage;
 import com.lms.init.model.enums.FileUploadBizEnum;
 import com.lms.result.EnableResponseAdvice;
 
@@ -39,11 +42,12 @@ public class FileController {
 
     private final OssClient ossClient;
 
+    private final OssProperties ossProperties;
     /**
      * 文件上传
      *
      * @param multipartFile
-     * @param uploadFileRequest
+     * @param biz
      * @return
      */
     @PostMapping("/upload")
@@ -71,9 +75,11 @@ public class FileController {
             file = File.createTempFile(filepath, null);
             multipartFile.transferTo(file);
 
-            ossClient.putObject(FileConstant.BUCKET_NAME, filepath, new FileInputStream(file));
+            ossClient.putObject(ossProperties.getBucketName(), filepath, new FileInputStream(file));
+             // 发布事件
+            publishEvent(getUrl(filepath),loginId);
             // 返回可访问地址
-            return filepath;
+            return getUrl(filepath);
         } catch (Exception e) {
             log.error("file upload error, filepath = " + filepath, e);
             throw new BusinessException(HttpCode.SYSTEM_ERROR, "上传失败");
@@ -87,7 +93,14 @@ public class FileController {
             }
         }
     }
-
+    private String getUrl(String url){
+        String temp="https://%s.%s/%s";
+        return String.format(temp,ossProperties.getBucketName(),ossProperties.getEndpoint(),url);
+    }
+    private void publishEvent(String url,Long userId){
+        // 发布事件
+        SpringUtil.publishEvent(new UploadAvatarEvent(this,new UploadAvatarMessage(url,userId)));
+    }
     /**
      * 校验文件
      *

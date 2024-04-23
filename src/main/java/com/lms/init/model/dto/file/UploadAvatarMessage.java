@@ -2,6 +2,7 @@ package com.lms.init.model.dto.file;
 
 import io.swagger.annotations.ApiModel;
 import io.swagger.annotations.ApiModelProperty;
+import lombok.AllArgsConstructor;
 import lombok.Data;
 
 import java.io.Serializable;
@@ -12,13 +13,18 @@ import java.io.Serializable;
  * @since 2024-02-01
  */
 @Data
-@ApiModel(value = "UploadFileRequest对象", description = "文件上传")
-public class UploadFileRequest implements Serializable {
+@AllArgsConstructor
+@ApiModel(value = "UploadAvatarMessage对象", description = "文件上传")
+public class UploadAvatarMessage implements Serializable {
 
     /**
      * 业务
      */
-    @ApiModelProperty(value = "业务类型")
-    private String biz;
+    private String url;
+    /**
+     *
+     * 用户id
+     */
+    private Long userId;
 
 }
