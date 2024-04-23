@@ -35,10 +35,14 @@ swagger:
 
 # 文件存储的路径
 oss:
-  #root-path 具体存储的文件路径
-  root-path: E:\question_sys\question_file_home
-  #endpoint:  后端的地址
-  endpoint: http://localhost:9000/api
+  #root-path: C:\Users\zdh\Desktop\test
+  accessKey: xxxxxxxxxxxxxxx
+  secretKey: xxxxxxxxxxx
+  #endpoint: http://119.91.143.140:20001
+  endpoint: xxxxxxxxxxxxxxxx.com
+  localOssClient: false
+  pathStyleAccess: false
+  bucketName: xxxxxxxxxxxxxxxxxx
 
 mybatis-plus:
   configuration:
